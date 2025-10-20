@@ -1,20 +1,21 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+name: Feature Request
+about: Request a new feature
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## User Story
+_As a **persona**,
+I want to **do something**,
+so that I **can achieve some benefit**_.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## Description
+Please provide a description of the feature and why it is needed and how it improves the project.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Technical Details
+Please provide a summary of which modules or functionalities have to be added/changed.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## Checklist
+- [ ] (Please add further necessary items related to the FR.)
+- [ ] Test Cases are defined
