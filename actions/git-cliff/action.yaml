@@ -1,0 +1,41 @@
+name: 'Git-Cliff'
+description: 'Run git-cliff with shared configuration and input from repo'
+
+inputs:
+  ref_name:
+    description: "Which branch the changelog and tag should be pushed to"
+    required: true
+    default: "main"
+  version:
+    description: "Version number for changelog generation"
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install git-cliff
+      shell: bash
+      run: cargo install git-cliff
+
+    - name: Update changelog, create git tag, push to main
+      shell: bash
+      env:
+        REF_NAME: ${{ inputs.ref_name }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        # Add as GitHub actions bot
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        # Set git-cliff config path
+        GIT_CLIFF_CONFIG_PATH="${{ github.action_path }}/cliff.toml"
+        # Update the changelog
+        git-cliff --config "$GIT_CLIFF_CONFIG_PATH" --tag "$VERSION" -o CHANGELOG.md
+        # Remove last empty newline (no consecutive newlines, otherwise Markdown will complain)
+        sed -i '${/^$/d}' CHANGELOG.md
+        # Create the actual commit
+        git add CHANGELOG.md
+        git commit -m "chore(release): update CHANGELOG.md"
+        # Create a git tag
+        git tag v"$VERSION"
+        # Push to specified branch selected in UI
+        git push --atomic origin "$REF_NAME" v"$VERSION"
