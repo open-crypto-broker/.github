@@ -1,0 +1,38 @@
+name: 'Markdownlint'
+description: 'Run Markdown linter with shared configuration'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install markdownlint-cli2
+      shell: bash
+      run: npm install -g markdownlint-cli2
+
+    - name: Determine changed Markdown files
+      id: changed
+      shell: bash
+      run: |
+        # If this is a pull request, compare with the base branch
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "Finding changed files in PR..."
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
+        else
+          echo "Finding changed files in push..."
+          FILES=$(git diff --name-only HEAD^ HEAD | grep '\.md$' || true)
+        fi
+        echo "files=$FILES" >> $GITHUB_OUTPUT
+
+    - name: Run markdownlint
+      if: ${{ steps.changed.outputs.files != '' }}
+      shell: bash
+      run: |
+        MDL_CONFIG_PATH="${{ github.action_path }}/.markdownlint.json"
+        # Check the config path and print the config if needed
+        # echo "Using Markdownlint config at: $MDL_CONFIG_PATH"
+        # cat "$MDL_CONFIG_PATH"
+
+        echo "Linting changed Markdown files:"
+        echo "${{ steps.changed.outputs.files }}"
+
+        markdownlint-cli2 --config "$MDL_CONFIG_PATH" ${{ steps.changed.outputs.files }}
