@@ -43,7 +43,8 @@ runs:
       id: push
       uses: docker/build-push-action@v6
       with:
-        context: docker
+        context: .
+	file: docker/Dockerfile
         push: true
         tags: ${{ steps.meta_tag.outputs.tags || steps.meta_input.outputs.tags }}
         labels: ${{ steps.meta_tag.outputs.labels || steps.meta_input.outputs.labels }}
