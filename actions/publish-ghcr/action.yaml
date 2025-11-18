@@ -1,0 +1,57 @@
+name: 'Publish-GHCR'
+description: 'Create and publish image to GHCR'
+
+inputs:
+  registry:
+    description: Defines the container registry to be pushed to.
+    required: true
+  image_name:
+    description: Defines the container image name.
+    required: true
+  image_tag:
+    description: Defines the tag for the container image.
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+
+    - name: Extract metadata (tags, labels) for Docker (tag-variant)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      id: meta_tag
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.registry }}/${{ inputs.image_name }}
+        tags: |
+          type=ref,event=tag
+
+    - name: Extract metadata (tags, labels) for Docker (manual trigger variant)
+      if: github.event_name == 'workflow_dispatch'
+      id: meta_input
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ inputs.registry }}/${{ inputs.image_name }}
+        tags: |
+          type=raw,value=${{ inputs.image_tag }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # build the image; if the build succeeds, it pushes the image to GitHub Packages,
+    # using the `tags` and `labels` parameters to tag and label the image with the output from the "meta" step.
+    - name: Build and push docker image
+      id: push
+      uses: docker/build-push-action@v6
+      with:
+        context: docker
+        push: true
+        tags: ${{ steps.meta_tag.outputs.tags || steps.meta_input.outputs.tags }}
+        labels: ${{ steps.meta_tag.outputs.labels || steps.meta_input.outputs.labels }}
+
+    # This step generates an artifact attestation for the image.
+    - name: Generate artifact attestation
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-name: ${{ inputs.registry }}/${{ inputs.image_name }}
+        subject-digest: ${{ steps.push.outputs.digest }}
+        push-to-registry: true
