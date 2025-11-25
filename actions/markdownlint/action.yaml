@@ -38,7 +38,5 @@ runs:
         # cat "$MDL_CONFIG_PATH"
 
         echo "Linting changed Markdown files:"
-        for file in ${{ steps.changed.outputs.files }}; do
-          echo "Linting $file"
-          markdownlint-cli2 --config "$MDL_CONFIG_PATH" "$file"
-        done
+        FILES=${{ steps.changed.outputs.files }}
+        markdownlint-cli2 --config "$MDL_CONFIG_PATH" "$FILES"
