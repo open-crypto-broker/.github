@@ -12,6 +12,8 @@ runs:
       id: changed
       shell: bash
       run: |
+        echo "Detecting changed Markdown files..."
+
         # If this is a pull request, compare with the base branch
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           echo "Finding changed files in PR..."
@@ -21,11 +23,10 @@ runs:
           echo "Finding changed files in push..."
           FILES=$(git diff --name-only HEAD^ HEAD | grep '\.md$' || true)
         fi
-        {
-          echo "files<<EOF"
-          echo "$FILES"
-          echo "EOF"
-        } >> "$GITHUB_OUTPUT"
+
+        # Remove newlines and make a whitespace separated list
+        FILES=$(echo "$FILES" | tr '\n' ' ')
+        echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
     - name: Run markdownlint
       if: ${{ steps.changed.outputs.files != '' }}
