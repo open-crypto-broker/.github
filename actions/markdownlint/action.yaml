@@ -39,4 +39,4 @@ runs:
 
         echo "Linting changed Markdown files:"
         FILES=${{ steps.changed.outputs.files }}
-        markdownlint-cli2 --config "$MDL_CONFIG_PATH" "$FILES"
+        markdownlint-cli2 --config "$MDL_CONFIG_PATH" $FILES
