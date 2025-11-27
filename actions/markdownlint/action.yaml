@@ -4,10 +4,6 @@ description: 'Run Markdown linter with shared configuration'
 runs:
   using: 'composite'
   steps:
-    - name: Install markdownlint-cli2
-      shell: bash
-      run: npm install -g markdownlint-cli2
-
     - name: Determine changed Markdown files
       id: changed
       shell: bash
@@ -24,19 +20,38 @@ runs:
           FILES=$(git diff --name-only HEAD^ HEAD | grep '\.md$' || true)
         fi
 
-        # Remove newlines and make a whitespace separated list
-        FILES=$(echo "$FILES" | tr '\n' ' ')
+        # Remove newlines and make a whitespace separated list, ensure empty if no file is found
+        FILES=$(echo "$FILES" | tr '\n' ' ' | xargs)
         echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+    - name: Install markdownlint-cli2
+      if: ${{ steps.changed.outputs.files != '' }}
+      shell: bash
+      run: |
+        FILES="${{ steps.changed.outputs.files }}"
+
+        if [ -z "$FILES" ]; then
+          echo "No Markdown files found. Skipping installation."
+          exit 0
+        fi
+
+        npm install -g markdownlint-cli2
 
     - name: Run markdownlint
       if: ${{ steps.changed.outputs.files != '' }}
       shell: bash
       run: |
+        FILES="${{ steps.changed.outputs.files }}"
+
+        if [ -z "$FILES" ]; then
+          echo "No Markdown files found. Skipping linting."
+          exit 0
+        fi
+
         MDL_CONFIG_PATH="${{ github.action_path }}/.markdownlint.json"
         # Check the config path and print the config if needed
         # echo "Using Markdownlint config at: $MDL_CONFIG_PATH"
         # cat "$MDL_CONFIG_PATH"
 
         echo "Linting changed Markdown files:"
-        FILES="${{ steps.changed.outputs.files }}"
         markdownlint-cli2 --config "$MDL_CONFIG_PATH" $FILES
