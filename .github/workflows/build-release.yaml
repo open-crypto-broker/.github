@@ -11,6 +11,16 @@ on:
         type: string
         required: true
 
+      # Define tasks to run
+      build-task:
+        type: string
+        required: false
+        default: build
+      ci-task:
+        type: string
+        required: false
+        default: ci
+
       # Go
       go-version:
         type: string
