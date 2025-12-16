@@ -1,0 +1,112 @@
+name: 'Build and Release Binaries'
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        required: true
+        description: go | js
+      app-name:
+        type: string
+        required: true
+
+      # Go
+      go-version:
+        type: string
+        required: false
+        default: "1.25"
+
+      # Node.js
+      node-version:
+        type: string
+        required: false
+        default: "22"
+
+permissions:
+  contents: write   # required for GitHub Releases
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # see https://docs.github.com/en/actions/reference/runners/github-hosted-runners
+          - os: ubuntu-latest
+            suffix: linux-x86_64
+          - os: macos-14
+            suffix: macos-arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # -- Language setup --
+
+      - name: Setup Go
+        if: inputs.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Setup Node.js
+        if: inputs.language == 'js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      # -- Build steps --
+
+      - name: Setup Task
+        uses: go-task/setup-task@v1
+        with:
+          version: '3.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Run CI task
+        run: task ${{ inputs.ci-task }}
+
+      - name: Build binary
+        run: |
+          task ${{ inputs.build-task }}
+          mkdir -p build
+          cp bin/${{ inputs.app-name }} build/
+
+      - name: Create ZIP package
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARCHIVE="${{ inputs.app-name }}-${VERSION}-${{ matrix.suffix }}.zip"
+          cd build
+          zip -r "../$ARCHIVE" "${{ inputs.app-name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app-name }}-${{ matrix.suffix }}
+          path: ${{ inputs.app-name }}-${{ steps.version.outputs.version }}-${{ matrix.suffix }}.zip
+
+  release:
+    name: Upload artifacts to release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
