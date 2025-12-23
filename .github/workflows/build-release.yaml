@@ -59,7 +59,7 @@ jobs:
         if: inputs.language == 'go'
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ inputs.go-version }}
+          go-version: go.mod
 
       - name: Setup Node.js
         if: inputs.language == 'js'
