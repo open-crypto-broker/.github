@@ -15,7 +15,13 @@ runs:
   steps:
     - name: Install git-cliff
       shell: bash
-      run: cargo install git-cliff
+      run: |
+        VERSION="2.10.1"
+        wget "https://github.com/orhun/git-cliff/releases/download/v${VERSION}/git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+        tar -xzf git-cliff-*.tar.gz
+        mv git-cliff-${VERSION}/git-cliff /usr/local/bin
+        rm git-cliff-${VERSION}-x86_64-unknown-linux-gnu.tar.gz
+        rm -rf git-cliff-${VERSION}/
 
     - name: Update changelog, create git tag, push to main
       shell: bash
