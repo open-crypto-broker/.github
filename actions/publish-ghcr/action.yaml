@@ -63,5 +63,5 @@ runs:
         helm upgrade --install kube-broker deployments/k8s/kube-broker \
           --namespace crypto-broker \
           --create-namespace \
-          -f values.yaml \
+          -f Chart.yaml \
           --set appVersion=${{ github.event.inputs.tag || github.ref_name }}
