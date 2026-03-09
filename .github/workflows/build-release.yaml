@@ -10,6 +10,9 @@ on:
       app-name:
         type: string
         required: true
+      tag:
+        type: string
+        required: true
 
       # Define tasks to run
       build-task:
@@ -21,12 +24,6 @@ on:
         required: false
         default: ci
 
-      # Go
-      go-version:
-        type: string
-        required: false
-        default: "1.25"
-
       # Node.js
       node-version:
         type: string
@@ -35,10 +32,12 @@ on:
 
 permissions:
   contents: write   # required for GitHub Releases
+  packages: write   # required for pushing to GHCR
 
 jobs:
   build:
     name: Build binaries
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -76,14 +75,10 @@ jobs:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-
       - name: Run CI task
         run: task ${{ inputs.ci-task }}
 
-      - name: Build binary
+      - name: Run build task
         run: |
           task ${{ inputs.build-task }}
           mkdir -p build
@@ -92,8 +87,7 @@ jobs:
       - name: Create ZIP package
         shell: bash
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          ARCHIVE="${{ inputs.app-name }}-${VERSION}-${{ matrix.suffix }}.zip"
+          ARCHIVE="${{ inputs.app-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip"
           cd build
           zip -r "../$ARCHIVE" "${{ inputs.app-name }}"
 
@@ -101,11 +95,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app-name }}-${{ matrix.suffix }}
-          path: ${{ inputs.app-name }}-${{ steps.version.outputs.version }}-${{ matrix.suffix }}.zip
+          path: ${{ inputs.app-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
 
-  release:
+  gh-release:
     name: Upload artifacts to release
     needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 
     steps:
@@ -120,3 +115,40 @@ jobs:
           files: dist/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ghcr-release:
+    name: Upload binaries to GHCR
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Setup ORAS for GHCR access
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.2.0
+
+      - name: Login to GHCR with ORAS
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push binaries to GHCR
+        run: |
+          TAG="${{ inputs.tag }}"
+
+          find dist -type f -name "*.zip" | while read -r file; do
+            BASENAME=$(basename "$file" .zip)
+
+            # Extract platform suffix (last part after last dash)
+            PLATFORM="${BASENAME##*-}"
+
+            oras push \
+              ghcr.io/${{ github.repository }}/${{ inputs.app-name }}-binary-${PLATFORM}:${TAG} \
+              "$file" \
+              --artifact-type application/zip
+          done
