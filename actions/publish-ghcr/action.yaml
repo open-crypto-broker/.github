@@ -3,14 +3,19 @@ description: 'Builds and pushes a Docker image to GHCR with automated metadata'
 
 inputs:
   registry:
+    description: Defines the container registry to be pushed to.
     required: true
   image_name:
+    description: Defines the container image name.
     required: true
   image_tag:
+    description: Defines the container image tag.
     required: false
   dockerfile:
+    description: Path to the Dockerfile to build the image. Defaults to "docker/Dockerfile".
     default: docker/Dockerfile
   context:
+    description: Build context for the Docker build.
     default: '.'
 
 outputs:
