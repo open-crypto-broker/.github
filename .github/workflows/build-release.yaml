@@ -56,9 +56,9 @@ jobs:
 
       - name: Setup Go
         if: inputs.language == 'go'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: go.mod
+          go-version-file: 'go.mod'
 
       - name: Setup Node.js
         if: inputs.language == 'js'
