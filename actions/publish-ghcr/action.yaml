@@ -56,7 +56,7 @@ runs:
         cache-to: type=gha,mode=max
 
     - name: Generate artifact attestation
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-name: ${{ inputs.registry }}/${{ inputs.image_name }}
         subject-digest: ${{ steps.push.outputs.digest }}
