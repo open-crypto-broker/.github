@@ -21,15 +21,18 @@ runs:
         node-version: '22'
 
     - name: Configure git author
+      shell: bash
       run: |
         git config --global user.name "${{ github.actor }}"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
     - name: Update npm version in package.json and push to repository
+      shell: bash
       run: |
         npm version ${{ inputs.version }} --preid=rc -m "chore: bump version to %s"
 
     - name: Push version bump
+      shell: bash
       run: |
         git push --follow-tags
 
