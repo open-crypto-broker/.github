@@ -1,0 +1,35 @@
+name: NPM Version Bump
+description: 'Bumps version with npm, pushes version tag to github'
+
+inputs:
+  version:
+    description: 'Version (pre(patch/minor/major), prerelease, release)'
+    required: true
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
+
+    - name: Configure git author
+      run: |
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+    - name: Update npm version in package.json and push to repository
+      run: |
+        npm version ${{ inputs.version }} --preid=rc -m "chore: bump version to %s"
+
+    - name: Push version bump
+      run: |
+        git push --follow-tags
+
