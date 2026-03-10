@@ -2,6 +2,10 @@ name: 'Publish-GHCR'
 description: 'Builds and pushes a Docker image to GHCR with automated metadata'
 
 inputs:
+  is_rc:
+    description: "If true, do not push image"
+    required: false
+    default: "false"
   registry:
     description: Defines the container registry to be pushed to.
     required: true
@@ -10,6 +14,9 @@ inputs:
     required: true
   image_tag:
     description: Defines the container image tag.
+    required: false
+  image_sha:
+    description: The git commit SHA to include as metadata in the image.
     required: false
   dockerfile:
     description: Path to the Dockerfile to build the image. Defaults to "docker/Dockerfile".
@@ -36,11 +43,11 @@ runs:
         tags: |
           type=ref,event=tag
           type=sha
-          type=edge,branch=main
         labels: |
           org.opencontainers.image.source=${{ github.repositoryUrl }}
-          org.opencontainers.image.revision=${{ github.sha }}
-          org.opencontainers.image.version=${{ github.ref_name }}
+          org.opencontainers.image.revision=${{ inputs.image_sha }}
+          org.opencontainers.image.version=${{ inputs.image_tag }}
+          org.opencontainers.image.rc=${{ inputs.is_rc }}
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -55,8 +62,8 @@ runs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
-          VERSION=${{ github.ref_name }}
-          COMMIT=${{ github.sha }}
+          VERSION=${{ inputs.image_tag }}
+          COMMIT=${{ inputs.image_sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 

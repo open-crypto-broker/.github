@@ -3,6 +3,12 @@ name: 'Build and Release Binaries'
 on:
   workflow_call:
     inputs:
+      # Create a release candidate if the tag contains '-rc', otherwise create a normal release
+      is_rc:
+        type: string
+        required: false
+        default: "false"
+      # Build metadata input
       language:
         type: string
         required: true
@@ -13,7 +19,6 @@ on:
       tag:
         type: string
         required: true
-
       # Define tasks to run
       build-task:
         type: string
@@ -23,7 +28,6 @@ on:
         type: string
         required: false
         default: ci
-
       # Node.js
       node-version:
         type: string
@@ -100,7 +104,7 @@ jobs:
   gh-release:
     name: Upload artifacts to release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: (startsWith(github.ref, 'refs/tags/')) && inputs.is_rc != 'true'
     runs-on: ubuntu-latest
 
     steps:
