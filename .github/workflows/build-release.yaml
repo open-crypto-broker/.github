@@ -55,9 +55,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: true
 
       # -- Language setup --
-
       - name: Setup Go
         if: inputs.language == 'go'
         uses: actions/setup-go@v6
@@ -72,7 +74,6 @@ jobs:
           cache: npm
 
       # -- Build steps --
-
       - name: Setup Task
         uses: go-task/setup-task@v1
         with:
@@ -95,6 +96,7 @@ jobs:
           cd build
           zip -r "../$ARCHIVE" "${{ inputs.app-name }}"
 
+      # -- Upload artifact for later steps --
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
