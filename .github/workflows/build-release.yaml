@@ -13,7 +13,7 @@ on:
         type: string
         required: true
         description: go | js
-      app-name:
+      build-name:
         type: string
         required: true
       tag:
@@ -85,23 +85,23 @@ jobs:
 
       - name: Run build task
         run: |
-          task ${{ inputs.build-task }}
+          task ${{ inputs.build-task }} APP_NAME=${{ inputs.build-name }}
           mkdir -p build
-          cp bin/${{ inputs.app-name }} build/
+          cp bin/${{ inputs.build-name }} build/
 
       - name: Create ZIP package
         shell: bash
         run: |
-          ARCHIVE="${{ inputs.app-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip"
+          ARCHIVE="${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip"
           cd build
-          zip -r "../$ARCHIVE" "${{ inputs.app-name }}"
+          zip -r "../$ARCHIVE" "${{ inputs.build-name }}"
 
       # -- Upload artifact for later steps --
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: ${{ inputs.app-name }}-${{ matrix.suffix }}
-          path: ${{ inputs.app-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
+          name: ${{ inputs.build-name }}-${{ matrix.suffix }}
+          path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
 
   gh-release:
     name: Upload artifacts to release
@@ -111,7 +111,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
 
@@ -130,9 +130,10 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
+          merge-multiple: true
 
       - name: Setup ORAS for GHCR access
         uses: oras-project/setup-oras@v1
@@ -141,20 +142,27 @@ jobs:
 
       - name: Login to GHCR with ORAS
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+          oras login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
       - name: Push binaries to GHCR
         run: |
           TAG="${{ inputs.tag }}"
+          APP="${{ inputs.build-name }}"
+          REPO="ghcr.io/${{ github.repository_owner }}/${APP}"
 
-          find dist -type f -name "*.zip" | while read -r file; do
-            BASENAME=$(basename "$file" .zip)
+          for file in dist/*.zip; do
+            NAME=$(basename "$file" .zip)
 
-            # Extract platform suffix (last part after last dash)
-            PLATFORM="${BASENAME##*-}"
+            # Extract platform suffix from filename
+            PLATFORM="${NAME##*-}"
+
+            echo "Publishing $file for platform $PLATFORM"
 
             oras push \
-              ghcr.io/${{ github.repository }}/${{ inputs.app-name }}-binary-${PLATFORM}:${TAG} \
-              "$file" \
-              --artifact-type application/zip
+              "${REPO}-binary-${PLATFORM}:${TAG}" \
+              "$file:application/zip" \
+              --annotation "org.opencontainers.image.title=${APP}" \
+              --annotation "org.opencontainers.image.version=${TAG}" \
+              --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}"
           done
