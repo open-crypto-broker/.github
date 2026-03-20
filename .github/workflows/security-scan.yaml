@@ -15,15 +15,15 @@ on:
         required: false
         type: string
 
-      # Dependency file scan input (SBOM)
-      scan_file:
-        description: "Scan a dependency file (SBOM)"
+      # Directory scan input (SBOM)
+      scan_directory:
+        description: "Scan directory for SBOM generation"
         required: false
         type: boolean
         default: false
 
-      file_to_scan:
-        description: "File to scan (e.g. go.mod, package.json)"
+      directory_to_scan:
+        description: "Directory to scan"
         required: false
         type: string
 
@@ -93,14 +93,19 @@ jobs:
   # Syft + Grype: Dependency SBOM Security Scan
   ################################################
   scan-sbom:
-    if: inputs.scan_file
+    if: inputs.scan_directory
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate file input
+      - name: Validate directory path input
         run: |
-          if [ -z "${{ inputs.file_to_scan }}" ]; then
-            echo "file_to_scan is required when scan_file=true"
+          if [ -z "${{ inputs.directory_to_scan }}" ]; then
+            echo "directory_to_scan is required when scan_directory=true"
+            exit 1
+          fi
+
+          if [ ! -d "${{ inputs.directory_to_scan }}" ]; then
+            echo "Directory does not exist: ${{ inputs.directory_to_scan }}"
             exit 1
           fi
 
@@ -110,15 +115,15 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
-          file: ${{ inputs.file_to_scan }}
+          path: ${{ inputs.directory_to_scan }}
           format: spdx-json
-          output-file: "${{ inputs.file_to_scan }}-sbom.spdx.json"
+          output-file: "sbom.spdx.json"
 
       - name: Scan SBOM
         uses: anchore/scan-action@v7
         id: scan_sbom
         with:
-          sbom: "${{ inputs.file_to_scan }}-sbom.spdx.json"
+          sbom: "sbom.spdx.json"
           fail-build: true
           severity-cutoff: critical
           output-format: sarif
