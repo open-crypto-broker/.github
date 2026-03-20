@@ -1,0 +1,143 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      # Docker image scan input
+      scan_image:
+        description: "Scan a container image"
+        required: false
+        type: boolean
+        default: false
+
+      image_name:
+        description: "Base image name (without tag)"
+        required: false
+        type: string
+
+      # Directory scan input (SBOM)
+      scan_directory:
+        description: "Scan directory for SBOM generation"
+        required: false
+        type: boolean
+        default: false
+
+      directory_to_scan:
+        description: "Directory to scan"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+
+concurrency:
+  group: security-scan-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  ################################################
+  # Grype: Docker Image Security Scan
+  ################################################
+  scan-image:
+    if: inputs.scan_image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate image input
+        run: |
+          if [ -z "${{ inputs.image_name }}" ]; then
+            echo "image_name is required when scan_image=true"
+            exit 1
+          fi
+
+      - name: Determine latest release tag
+        id: latest
+        run: |
+          TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image digest
+        run: |
+          IMAGE="${{ inputs.image_name }}:${{ steps.latest.outputs.tag }}"
+          DIGEST=$(docker buildx imagetools inspect $IMAGE --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "IMAGE_WITH_DIGEST=${{ inputs.image_name }}@$DIGEST" >> $GITHUB_ENV
+
+      - name: Scan image with Grype
+        id: scan_image
+        uses: anchore/scan-action@v7
+        with:
+          image: ${{ env.IMAGE_WITH_DIGEST }}
+          fail-build: true
+          severity-cutoff: critical # Only fail the build for Critical vulnerabilities
+          output-format: sarif # Generate SARIF for GitHub Security
+
+      - name: Upload docker image scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() # Ensures results are uploaded even if the scan found vulnerabilities
+        with:
+          sarif_file: ${{ steps.scan_image.outputs.sarif }}
+
+      - name: Upload docker image scan artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docker-image-scan-results
+          path: ${{ steps.scan_image.outputs.sarif }}
+          retention-days: 5
+
+  ################################################
+  # Syft + Grype: Dependency SBOM Security Scan
+  ################################################
+  scan-sbom:
+    if: inputs.scan_directory
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate directory path input
+        run: |
+          if [ -z "${{ inputs.directory_to_scan }}" ]; then
+            echo "directory_to_scan is required when scan_directory=true"
+            exit 1
+          fi
+
+          if [ ! -d "${{ inputs.directory_to_scan }}" ]; then
+            echo "Directory does not exist: ${{ inputs.directory_to_scan }}"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: ${{ inputs.directory_to_scan }}
+          format: spdx-json
+          output-file: "sbom.spdx.json"
+
+      - name: Scan SBOM
+        uses: anchore/scan-action@v7
+        id: scan_sbom
+        with:
+          sbom: "sbom.spdx.json"
+          fail-build: true
+          severity-cutoff: critical
+          output-format: sarif
+
+      - name: Upload SBOM SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.scan_sbom.outputs.sarif }}
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-scan-results
+          path: ${{ steps.scan_sbom.outputs.sarif }}
+          retention-days: 5
