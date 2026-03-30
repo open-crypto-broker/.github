@@ -25,7 +25,7 @@ runs:
       shell: bash
       run: |
         npm version ${{ inputs.version }} --preid=rc --no-git-tag-version
-        NEW_VERSION=$(node -p "require('./package.json').version")
+        NEW_VERSION=$(npm pkg get version | tr -d '"')
         git add package.json package-lock.json
         git commit -m "chore: bump version to v${NEW_VERSION}"
 
