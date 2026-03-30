@@ -1,5 +1,5 @@
 name: NPM Version Bump
-description: 'Bumps version with npm, pushes version tag to github'
+description: 'Bumps version with npm and pushes to github'
 
 inputs:
   version:
@@ -13,7 +13,7 @@ runs:
     - name: Setup Node
       uses: actions/setup-node@v6
       with:
-        node-version: '22'
+        node-version: '24'
 
     - name: Configure git author
       shell: bash
@@ -21,13 +21,16 @@ runs:
         git config --global user.name "${{ github.actor }}"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
-    - name: Update npm version in package.json and push to repository
+    - name: Update npm version in package.json
       shell: bash
       run: |
-        npm version ${{ inputs.version }} --preid=rc -m "chore: bump version to %s"
+        npm version ${{ inputs.version }} --preid=rc --no-git-tag-version
+        NEW_VERSION=$(npm pkg get version | tr -d '"')
+        git add package.json package-lock.json
+        git commit -m "chore: bump version to v${NEW_VERSION}"
 
     - name: Push version bump
       shell: bash
       run: |
-        git push --follow-tags
+        git push
 
