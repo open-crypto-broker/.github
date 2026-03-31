@@ -37,7 +37,7 @@ runs:
 
     - name: Extract Docker metadata
       id: meta
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@v6
       with:
         images: ${{ inputs.registry }}/${{ inputs.image_name }}
         tags: |
@@ -50,11 +50,11 @@ runs:
           org.opencontainers.image.rc=${{ inputs.is_rc }}
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build and push Docker image
       id: push
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: ${{ inputs.context }}
         file: ${{ inputs.dockerfile }}
@@ -68,7 +68,7 @@ runs:
         cache-to: type=gha,mode=max
 
     - name: Generate artifact attestation
-      uses: actions/attest-build-provenance@v3
+      uses: actions/attest-build-provenance@v4
       with:
         subject-name: ${{ inputs.registry }}/${{ inputs.image_name }}
         subject-digest: ${{ steps.push.outputs.digest }}
