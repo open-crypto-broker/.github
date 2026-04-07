@@ -41,7 +41,7 @@ To become an excellent contributor, check out our [contribution guidelines](http
 
 ## :blue_heart: Code of Conduct
 
-To facilitate a nice environment for all, check out [our Code of Conduct](https://github.com/open-crypto-broker/.github/blob/main/CODE_OF_CONDUCT.md).
+To facilitate a nice environment for all, check out our [Code of Conduct](https://github.com/open-crypto-broker/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## :books: Learn More
 
