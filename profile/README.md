@@ -14,7 +14,7 @@ Learn more about ApeiroRA by checking out the official website at [https://apeir
 
 
 As cryptographic standards evolve and new vulnerabilities emerge, organizations must ensure that their software can quickly adapt to maintain strong security postures. 
-Open Crypto Broker (OCB) supports Crypto Agility by enabling software to seamlessly transition to new cryptographic algorithms, protocols, or standards as security requirements change. 
+Open Crypto Broker (OCB) supports Crypto Agility by enabling software to more easily transition to new cryptographic algorithms, protocols, or standards as security requirements change. 
 This adaptability is essential to protect sensitive data, maintain compliance, and mitigate the risks associated with outdated or vulnerable cryptographic mechanisms.
 Open Crypto Broker abstracts away cryptographic details from applications, which are no longer hardcoded in the application, but specified in a configurable file called crypto profile.
 The crypto profile is defined based on standards like FIPS or PCI. Applications make agnostic crypto calls to the OCB which implements the profile using a crypto library, logs relevant information for auditing/alerting, and checks for profile compliance.
@@ -37,7 +37,7 @@ Open Crypto Broker has been donated to the NeoNephos Foundation, a Linux Foundat
 ## :busts_in_silhouette: Get Involved
 
 Thank you for considering to contribute to our project.
-To become an excellent contributor, check out our [contribution guidelines](https://github.com/open-crypto-broker/.github/blob/main/CONTRIBUTING.md) and our [open issues](https://github.com/issues?q=is:open+is:issue+org:open-crypto-broker).
+To become a contributor, check out our [contribution guidelines](https://github.com/open-crypto-broker/.github/blob/main/CONTRIBUTING.md) and our [open issues](https://github.com/issues?q=is:open+is:issue+org:open-crypto-broker).
 
 ## :blue_heart: Code of Conduct
 
