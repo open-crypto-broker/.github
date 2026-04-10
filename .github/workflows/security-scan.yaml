@@ -27,10 +27,7 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: read
-  packages: read
-  security-events: write
+permissions: {}
 
 concurrency:
   group: security-scan-${{ github.repository }}
@@ -41,34 +38,45 @@ jobs:
   # Grype: Docker Image Security Scan
   ################################################
   scan-image:
+    name: Docker Image Security Scan
+    permissions:
+      contents: read      # required for checkout
+      packages: read      # required for pulling images from GHCR
+      security-events: write # required for uploading SARIF to GitHub Security tab
     if: inputs.scan_image
     runs-on: ubuntu-latest
 
     steps:
       - name: Validate image input
+        env:
+          IMAGE_NAME: ${{ inputs.image_name }}
         run: |
-          if [ -z "${{ inputs.image_name }}" ]; then
+          if [ -z "$IMAGE_NAME" ]; then
             echo "image_name is required when scan_image=true"
             exit 1
           fi
 
       - name: Determine latest release tag
         id: latest
-        run: |
-          TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
         env:
+          REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release list --repo "$REPOSITORY" --limit 1 --json tagName --jq '.[0].tagName')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Resolve image digest
+        env:
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ steps.latest.outputs.tag }}
         run: |
-          IMAGE="${{ inputs.image_name }}:${{ steps.latest.outputs.tag }}"
-          DIGEST=$(docker buildx imagetools inspect $IMAGE --format '{{json .Manifest.Digest}}' | tr -d '"')
-          echo "IMAGE_WITH_DIGEST=${{ inputs.image_name }}@$DIGEST" >> $GITHUB_ENV
+          IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "IMAGE_WITH_DIGEST=${IMAGE_NAME}@$DIGEST" >> "$GITHUB_ENV"
 
       - name: Scan image with Grype
         id: scan_image
-        uses: anchore/scan-action@v7
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           image: ${{ env.IMAGE_WITH_DIGEST }}
           fail-build: true
@@ -76,13 +84,13 @@ jobs:
           output-format: sarif # Generate SARIF for GitHub Security
 
       - name: Upload docker image scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
         if: always() # Ensures results are uploaded even if the scan found vulnerabilities
         with:
           sarif_file: ${{ steps.scan_image.outputs.sarif }}
 
       - name: Upload docker image scan artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: docker-image-scan-results
@@ -93,34 +101,42 @@ jobs:
   # Syft + Grype: Dependency SBOM Security Scan
   ################################################
   scan-sbom:
+    name: Dependency SBOM Security Scan
+    permissions:
+      contents: read      # required for checkout
+      security-events: write # required for uploading SARIF to GitHub Security tab
     if: inputs.scan_directory
     runs-on: ubuntu-latest
 
     steps:
       - name: Validate directory path input
+        env:
+          DIR_TO_SCAN: ${{ inputs.directory_to_scan }}
         run: |
-          if [ -z "${{ inputs.directory_to_scan }}" ]; then
+          if [ -z "$DIR_TO_SCAN" ]; then
             echo "directory_to_scan is required when scan_directory=true"
             exit 1
           fi
 
-          if [ ! -d "${{ inputs.directory_to_scan }}" ]; then
-            echo "Directory does not exist: ${{ inputs.directory_to_scan }}"
+          if [ ! -d "$DIR_TO_SCAN" ]; then
+            echo "Directory does not exist: $DIR_TO_SCAN"
             exit 1
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           path: ${{ inputs.directory_to_scan }}
           format: spdx-json
           output-file: "sbom.spdx.json"
 
       - name: Scan SBOM
-        uses: anchore/scan-action@v7
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         id: scan_sbom
         with:
           sbom: "sbom.spdx.json"
@@ -130,13 +146,13 @@ jobs:
 
       - name: Upload SBOM SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
         with:
           sarif_file: ${{ steps.scan_sbom.outputs.sarif }}
 
       - name: Upload SBOM artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: sbom-scan-results
           path: ${{ steps.scan_sbom.outputs.sarif }}

@@ -28,12 +28,11 @@ runs:
       env:
         REF_NAME: ${{ inputs.ref_name }}
         VERSION: ${{ inputs.version }}
+        GIT_CLIFF_CONFIG_PATH: ${{ github.action_path }}/cliff.toml
       run: |
         # Add as GitHub actions bot
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        # Set git-cliff config path
-        GIT_CLIFF_CONFIG_PATH="${{ github.action_path }}/cliff.toml"
         # Update the changelog
         git-cliff --config "$GIT_CLIFF_CONFIG_PATH" --tag "$VERSION" -o CHANGELOG.md
         # Remove last empty newline (no consecutive newlines, otherwise Markdown will complain)
