@@ -1,7 +1,7 @@
 # Welcome to the Open Crypto Broker Project on GitHub
 
 :wave: Welcome to the official GitHub presence of the Open Crypto Broker project. We are part of [ApeiroRA](https://apeirora.eu/content/projects/) which is an Important Project of Common European Interest - Next Generation Cloud Infrastructures and Services (IPCEI-CIS). 
-Open Crypto Broker (OCB) is a solution that supports crypto agility enabling applications to quickly adapt to new cryptographic standard and requirements.
+Open Crypto Broker (OCB) is a solution that supports crypto agility enabling applications to quickly adapt to new cryptographic standards and requirements.
 
 ## :globe_with_meridians: ApeiroRA?
 
