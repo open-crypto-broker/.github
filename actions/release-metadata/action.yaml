@@ -1,0 +1,81 @@
+name: 'Release Metadata'
+description: 'Computes release metadata from the current git tag'
+
+inputs:
+  image-base-name:
+    description: 'Base name for the Docker image (e.g., server, test_app_go, test_app_js)'
+    required: true
+
+outputs:
+  tag:
+    description: 'Release tag from GITHUB_REF_NAME'
+    value: ${{ steps.compute.outputs.tag }}
+  commit:
+    description: 'Full commit SHA of HEAD'
+    value: ${{ steps.compute.outputs.commit }}
+  is_rc:
+    description: 'Whether this is a release candidate (true/false)'
+    value: ${{ steps.compute.outputs.is_rc }}
+  image_name:
+    description: 'Docker image name (base name with optional -rc suffix)'
+    value: ${{ steps.compute.outputs.image_name }}
+  image_repo:
+    description: 'Full GHCR image repository path'
+    value: ${{ steps.compute.outputs.image_repo }}
+  component_repo:
+    description: 'OCM component repository path'
+    value: ${{ steps.compute.outputs.component_repo }}
+  sbom_file:
+    description: 'SBOM output filename'
+    value: ${{ steps.compute.outputs.sbom_file }}
+
+runs:
+  using: 'composite'
+
+  steps:
+    - id: compute
+      shell: bash
+      env:
+        IMAGE_BASE_NAME: ${{ inputs.image-base-name }}
+      run: |
+        TAG="${GITHUB_REF_NAME}"
+        COMMIT=$(git rev-parse HEAD)
+
+        if [[ "${TAG}" == *"-rc"* ]]; then
+          IS_RC=true
+          IMAGE_REPO="ghcr.io/open-crypto-broker/${IMAGE_BASE_NAME}-rc"
+          COMPONENT_REPO="ghcr.io/open-crypto-broker/ocm-components-rc"
+        else
+          IS_RC=false
+          IMAGE_REPO="ghcr.io/open-crypto-broker/${IMAGE_BASE_NAME}"
+          COMPONENT_REPO="ghcr.io/open-crypto-broker/ocm-components"
+        fi
+
+        IMAGE_NAME=$(basename "${IMAGE_REPO}")
+
+        {
+          echo "tag=${TAG}"
+          echo "commit=${COMMIT}"
+          echo "is_rc=${IS_RC}"
+          echo "image_repo=${IMAGE_REPO}"
+          echo "image_name=${IMAGE_NAME}"
+          echo "component_repo=${COMPONENT_REPO}"
+          echo "sbom_file=${IMAGE_NAME}-${TAG}-sbom.spdx.json"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Print release summary
+      shell: bash
+      env:
+        TAG: ${{ steps.compute.outputs.tag }}
+        IS_RC: ${{ steps.compute.outputs.is_rc }}
+        IMAGE_NAME: ${{ steps.compute.outputs.image_name }}
+        IMAGE_REPO: ${{ steps.compute.outputs.image_repo }}
+        COMPONENT_REPO: ${{ steps.compute.outputs.component_repo }}
+        SBOM_FILE: ${{ steps.compute.outputs.sbom_file }}
+      run: |
+        echo "Release tag: ${TAG}"
+        echo "RC mode: ${IS_RC}"
+        echo "Image name: ${IMAGE_NAME}"
+        echo "Docker repo: ${IMAGE_REPO}"
+        echo "OCM repo: ${COMPONENT_REPO}"
+        echo "SBOM file: ${SBOM_FILE}"

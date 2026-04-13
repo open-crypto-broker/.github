@@ -28,19 +28,14 @@ on:
         type: string
         required: false
         default: ci
-      # Node.js
-      node-version:
-        type: string
-        required: false
-        default: "24"
 
-permissions:
-  contents: write   # required for GitHub Releases
-  packages: write   # required for pushing to GHCR
+permissions: {}
 
 jobs:
   build:
     name: Build binaries
+    permissions:
+      contents: read # required for checkout
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ matrix.os }}
     strategy:
@@ -54,102 +49,127 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: true
+          persist-credentials: false
 
       # -- Language setup --
       - name: Setup Go
         if: inputs.language == 'go'
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: 'go.mod'
 
       - name: Setup Node.js
         if: inputs.language == 'js'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version-file: 'package.json'
           cache: npm
 
       # -- Build steps --
       - name: Setup Task
-        uses: go-task/setup-task@v2
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 # v2.0.0
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run CI task
-        run: task ${{ inputs.ci-task }}
+        env:
+          CI_TASK: ${{ inputs.ci-task }}
+        run: task "$CI_TASK"
 
       - name: Run build task
+        env:
+          BUILD_TASK: ${{ inputs.build-task }}
+          BUILD_NAME: ${{ inputs.build-name }}
         run: |
-          task ${{ inputs.build-task }} APP_NAME=${{ inputs.build-name }}
+          task "$BUILD_TASK" APP_NAME="$BUILD_NAME"
           mkdir -p build
-          cp bin/${{ inputs.build-name }} build/
+          cp "bin/$BUILD_NAME" build/
 
       - name: Create ZIP package
         shell: bash
+        env:
+          BUILD_NAME: ${{ inputs.build-name }}
+          TAG: ${{ inputs.tag }}
+          SUFFIX: ${{ matrix.suffix }}
         run: |
-          ARCHIVE="${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip"
+          ARCHIVE="${BUILD_NAME}-${TAG}-${SUFFIX}.zip"
           cd build
-          zip -r "../$ARCHIVE" "${{ inputs.build-name }}"
+          zip -r "../$ARCHIVE" "$BUILD_NAME"
 
       # -- Upload artifact for later steps --
       - name: Upload artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.build-name }}-${{ matrix.suffix }}
           path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
 
   gh-release:
     name: Upload artifacts to release
+    permissions:
+      contents: write # required for creating/uploading to GitHub Releases
     needs: build
     if: (startsWith(github.ref, 'refs/tags/')) && inputs.is_rc != 'true'
     runs-on: ubuntu-latest
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
 
       - name: Upload release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/**/*.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Create release if it doesn't exist yet
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag
+          fi
+          # Upload all ZIP artifacts (nested under per-artifact subdirectories)
+          find dist -name '*.zip' -exec gh release upload "$TAG" {} --clobber +
 
   ghcr-release:
     name: Upload binaries to GHCR
+    permissions:
+      packages: write # required for pushing to GHCR
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
           merge-multiple: true
 
       - name: Setup ORAS for GHCR access
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
         with:
           version: 1.2.0
 
       - name: Login to GHCR with ORAS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-          oras login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+          echo "$GH_TOKEN" | \
+          oras login ghcr.io -u "$REPO_OWNER" --password-stdin
 
       - name: Push binaries to GHCR
+        env:
+          TAG: ${{ inputs.tag }}
+          APP: ${{ inputs.build-name }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          TAG="${{ inputs.tag }}"
-          APP="${{ inputs.build-name }}"
-          REPO="ghcr.io/${{ github.repository_owner }}/${APP}"
+          REPO="ghcr.io/${REPO_OWNER}/${APP}"
 
           for file in dist/*.zip; do
             NAME=$(basename "$file" .zip)
@@ -164,5 +184,5 @@ jobs:
               "$file:application/zip" \
               --annotation "org.opencontainers.image.title=${APP}" \
               --annotation "org.opencontainers.image.version=${TAG}" \
-              --annotation "org.opencontainers.image.source=https://github.com/${{ github.repository }}"
+              --annotation "org.opencontainers.image.source=https://github.com/${REPOSITORY}"
           done
