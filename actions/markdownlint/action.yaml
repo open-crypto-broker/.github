@@ -38,7 +38,7 @@ runs:
           exit 0
         fi
 
-        npm install -g markdownlint-cli2
+        npm install -g markdownlint-cli2@0.22.0
 
     - name: Run markdownlint
       if: ${{ steps.changed.outputs.files != '' }}
