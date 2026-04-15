@@ -16,16 +16,46 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Determine changed workflow files
+        id: changed
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "Detecting changed workflow files..."
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "Finding changed files in PR..."
+            git fetch origin "$BASE_REF" --depth=1
+            FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | grep '^\.github/workflows/' || true)
+          else
+            echo "Finding changed files in push..."
+            FILES=$(git diff --name-only HEAD^ HEAD | grep '^\.github/workflows/' || true)
+          fi
+
+          FILES=$(echo "$FILES" | tr '\n' ' ' | xargs)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$FILES" ]; then
+            echo "No workflow files changed. Skipping linting."
+          else
+            echo "Changed workflow files: $FILES"
+          fi
+
       - name: Install actionlint
+        if: ${{ steps.changed.outputs.files != '' }}
         run: |
           bash <(curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
           echo "$PWD" >> "$GITHUB_PATH"
 
       - name: Install zizmor
+        if: ${{ steps.changed.outputs.files != '' }}
         run: pipx install zizmor==1.23.1
 
       - name: Run actionlint
+        if: ${{ steps.changed.outputs.files != '' }}
         run: actionlint
 
       - name: Run zizmor
+        if: ${{ steps.changed.outputs.files != '' }}
         run: zizmor --min-severity medium --persona=auditor .github/workflows/
