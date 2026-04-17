@@ -30,15 +30,7 @@ runs:
     - name: Install markdownlint-cli2
       if: ${{ steps.changed.outputs.files != '' }}
       shell: bash
-      env:
-        FILES: ${{ steps.changed.outputs.files }}
-      run: |
-        if [ -z "$FILES" ]; then
-          echo "No Markdown files found. Skipping installation."
-          exit 0
-        fi
-
-        npm install -g markdownlint-cli2@0.22.0
+      run: npm install -g markdownlint-cli2@0.22.0
 
     - name: Run markdownlint
       if: ${{ steps.changed.outputs.files != '' }}
@@ -47,14 +39,5 @@ runs:
         FILES: ${{ steps.changed.outputs.files }}
         MDL_CONFIG_PATH: ${{ github.action_path }}/.markdownlint.json
       run: |
-        if [ -z "$FILES" ]; then
-          echo "No Markdown files found. Skipping linting."
-          exit 0
-        fi
-
-        # Check the config path and print the config if needed
-        # echo "Using Markdownlint config at: $MDL_CONFIG_PATH"
-        # cat "$MDL_CONFIG_PATH"
-
         echo "Linting changed Markdown files:"
         markdownlint-cli2 --config "$MDL_CONFIG_PATH" $FILES
