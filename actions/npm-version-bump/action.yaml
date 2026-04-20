@@ -15,20 +15,14 @@ runs:
       with:
         node-version-file: 'package.json'
 
-    - name: Configure git author
-      shell: bash
-      env:
-        GIT_ACTOR: ${{ github.actor }}
-        GIT_ACTOR_ID: ${{ github.actor_id }}
-      run: |
-        git config --global user.name "$GIT_ACTOR"
-        git config --global user.email "${GIT_ACTOR_ID}+${GIT_ACTOR}@users.noreply.github.com"
-
     - name: Update npm version in package.json
       shell: bash
       env:
         NPM_VERSION: ${{ inputs.version }}
       run: |
+        # Add as GitHub actions bot
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
         npm version "$NPM_VERSION" --preid=rc --no-git-tag-version
         NEW_VERSION=$(npm pkg get version | tr -d '"')
         git add package.json package-lock.json
