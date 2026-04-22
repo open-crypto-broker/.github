@@ -134,12 +134,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          # Create release if it doesn't exist yet
-          if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --verify-tag
-          fi
-          # Upload all ZIP artifacts (nested under per-artifact subdirectories)
-          find dist -name '*.zip' -exec gh release upload "$TAG" {} --clobber +
+          gh release view "$TAG" || gh release create "$TAG" --verify-tag
+          gh release upload "$TAG" dist/**/*.zip --clobber
 
   ghcr-release:
     name: Upload binaries to GHCR
