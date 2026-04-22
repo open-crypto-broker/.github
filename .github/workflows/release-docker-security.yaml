@@ -39,6 +39,7 @@ jobs:
     permissions:
       packages: write
       contents: read
+      id-token: write # for publish-ghcr action needed
     runs-on: ubuntu-latest
 
     outputs:
