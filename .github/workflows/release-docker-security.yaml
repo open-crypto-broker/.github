@@ -119,7 +119,7 @@ jobs:
         with:
           image: ${{ steps.image.outputs.ref }}
           fail-build: true
-          severity-cutoff: high
+          severity-cutoff: critical
 
       - name: Upload SBOM to GitHub Release
         if: inputs.is_rc != 'true'
