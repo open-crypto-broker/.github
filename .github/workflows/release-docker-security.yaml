@@ -82,7 +82,7 @@ jobs:
     needs: docker
     permissions:
       contents: write
-      packages: read
+      packages: write
       security-events: write
       id-token: write
     runs-on: ubuntu-latest
