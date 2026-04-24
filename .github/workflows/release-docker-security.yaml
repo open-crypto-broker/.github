@@ -39,8 +39,8 @@ jobs:
     permissions:
       packages: write
       contents: read
-      attestations: write # for publish-ghcr action needed
       id-token: write # for publish-ghcr action needed
+      attestations: write # for publish-ghcr action needed
     runs-on: ubuntu-latest
 
     outputs:
@@ -81,10 +81,11 @@ jobs:
   security:
     needs: docker
     permissions:
-      contents: write
-      packages: write
-      security-events: write
-      id-token: write
+      contents: read
+      packages: write # for SBOM upload to release page
+      id-token: write # for ORAS login to GHCR
+      attestations: write # for attaching SBOM as OCI referrer
+      artifact-metadata: write # for uploading SBOM as release artifact
     runs-on: ubuntu-latest
 
     steps:
