@@ -81,7 +81,7 @@ jobs:
   security:
     needs: docker
     permissions:
-      contents: read
+      contents: write # for uploading SBOM to release page
       packages: write # for SBOM upload to release page
       id-token: write # for ORAS login to GHCR
       attestations: write # for attaching SBOM as OCI referrer
