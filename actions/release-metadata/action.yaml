@@ -33,7 +33,8 @@ runs:
   using: 'composite'
 
   steps:
-    - id: compute
+    - name: Compute release metadata
+      id: compute
       shell: bash
       env:
         IMAGE_BASE_NAME: ${{ inputs.image-base-name }}

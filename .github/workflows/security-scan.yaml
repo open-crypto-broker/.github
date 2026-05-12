@@ -27,11 +27,11 @@ on:
         required: false
         type: string
 
-permissions: {}
-
 concurrency:
-  group: security-scan-${{ github.repository }}
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.ref }}
   cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   ################################################
@@ -40,8 +40,8 @@ jobs:
   scan-image:
     name: Docker Image Security Scan
     permissions:
-      contents: read      # required for checkout
-      packages: read      # required for pulling images from GHCR
+      contents: read # required for checkout
+      packages: read # required for pulling images from GHCR
       security-events: write # required for uploading SARIF to GitHub Security tab
     if: inputs.scan_image
     runs-on: ubuntu-latest
@@ -104,7 +104,7 @@ jobs:
   scan-sbom:
     name: Dependency SBOM Security Scan
     permissions:
-      contents: read      # required for checkout
+      contents: read # required for checkout
       security-events: write # required for uploading SARIF to GitHub Security tab
     if: inputs.scan_directory
     runs-on: ubuntu-latest

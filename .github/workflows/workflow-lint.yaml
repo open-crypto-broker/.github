@@ -3,10 +3,15 @@ name: Reusable Workflow Lint
 on:
   workflow_call:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
   lint:
+    name: Lint GitHub Workflows
     permissions: {}
     runs-on: ubuntu-latest
 
@@ -51,7 +56,7 @@ jobs:
 
       - name: Install zizmor
         if: ${{ steps.changed.outputs.files != '' }}
-        run: pipx install zizmor==1.23.1
+        run: pipx install zizmor==1.24.1
 
       - name: Run actionlint
         if: ${{ steps.changed.outputs.files != '' }}
