@@ -36,9 +36,10 @@ jobs:
   # Build Docker image
   ################################################
   docker:
+    name: Build and Publish Docker Image
     permissions:
-      packages: write
-      contents: read
+      contents: read # required for checkout
+      packages: write # for pushing image to GHCR
       id-token: write # for publish-ghcr action needed
       attestations: write # for publish-ghcr action needed
     runs-on: ubuntu-latest
@@ -79,6 +80,7 @@ jobs:
   # SBOM + Security Scan
   ################################################
   security:
+    name: SBOM Generation and Security Scan
     needs: docker
     permissions:
       contents: write # for uploading SBOM to release page

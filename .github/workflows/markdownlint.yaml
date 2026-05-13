@@ -1,0 +1,27 @@
+name: Reusable Markdownlint
+
+on:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  markdownlint-pipeline:
+    name: Markdownlint Pipeline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # for checkout
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # important for git diff comparisons
+          persist-credentials: false
+
+      - name: Run Markdownlint
+        uses: open-crypto-broker/.github/actions/markdownlint@main # nolint # zizmor: ignore[unpinned-uses]
