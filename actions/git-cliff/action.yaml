@@ -9,6 +9,9 @@ inputs:
   version:
     description: "Version number for changelog generation"
     required: true
+  token:
+    description: "GitHub token for pushing commits and tags"
+    required: true
 
 runs:
   using: 'composite'
@@ -29,10 +32,13 @@ runs:
         REF_NAME: ${{ inputs.ref_name }}
         VERSION: ${{ inputs.version }}
         GIT_CLIFF_CONFIG_PATH: ${{ github.action_path }}/cliff.toml
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         # Add as GitHub actions bot
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        # Configure git to use the token for authentication
+        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
         # Update the changelog
         git-cliff --config "$GIT_CLIFF_CONFIG_PATH" --tag "$VERSION" -o CHANGELOG.md
         # Remove last empty newline (no consecutive newlines, otherwise Markdown will complain)
