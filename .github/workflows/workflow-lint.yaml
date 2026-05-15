@@ -2,6 +2,12 @@ name: Reusable Workflow Lint
 
 on:
   workflow_call:
+    inputs:
+      paths:
+        description: "Space-separated list of directory paths to check for changed files (e.g. '.github/workflows/ actions/')"
+        required: false
+        type: string
+        default: '.github/workflows/'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
@@ -27,16 +33,21 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PATHS: ${{ inputs.paths }}
         run: |
           echo "Detecting changed workflow files..."
+
+          # Build grep pattern from paths input
+          GREP_PATTERN=$(echo "$PATHS" | tr ' ' '\n' | sed 's|/$||' | sed 's|^|^|; s|$|/|' | paste -sd '|' -)
+          echo "Grep pattern: $GREP_PATTERN"
 
           if [ "$EVENT_NAME" = "pull_request" ]; then
             echo "Finding changed files in PR..."
             git fetch origin "$BASE_REF" --depth=1
-            FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | grep '^\.github/workflows/' || true)
+            FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | grep -E "$GREP_PATTERN" || true)
           else
             echo "Finding changed files in push..."
-            FILES=$(git diff --name-only HEAD^ HEAD | grep '^\.github/workflows/' || true)
+            FILES=$(git diff --name-only HEAD^ HEAD | grep -E "$GREP_PATTERN" || true)
           fi
 
           FILES=$(echo "$FILES" | tr '\n' ' ' | xargs)
@@ -60,8 +71,12 @@ jobs:
 
       - name: Run actionlint
         if: ${{ steps.changed.outputs.files != '' }}
-        run: actionlint
+        env:
+          STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
+        run: actionlint "${STEPS_CHANGED_OUTPUTS_FILES}"
 
       - name: Run zizmor
         if: ${{ steps.changed.outputs.files != '' }}
-        run: zizmor --min-severity medium --persona=auditor .github/workflows/
+        env:
+          STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
+        run: zizmor --min-severity medium --persona=auditor "${STEPS_CHANGED_OUTPUTS_FILES}"

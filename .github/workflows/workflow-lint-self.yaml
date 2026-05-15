@@ -11,3 +11,5 @@ jobs:
   lint:
     name: Lint Workflow
     uses: ./.github/workflows/workflow-lint.yaml
+    with:
+      paths: '.github/workflows/ actions/'
