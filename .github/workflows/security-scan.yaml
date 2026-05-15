@@ -84,14 +84,14 @@ jobs:
           output-format: sarif # Generate SARIF for GitHub Security
 
       - name: Upload docker image scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         if: always() # Ensures results are uploaded even if the scan found vulnerabilities
         with:
           sarif_file: ${{ steps.scan_image.outputs.sarif }}
           category: docker-image-scan
 
       - name: Upload docker image scan artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: docker-image-scan-results
@@ -147,14 +147,14 @@ jobs:
 
       - name: Upload SBOM SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         with:
           sarif_file: ${{ steps.scan_sbom.outputs.sarif }}
           category: sbom-scan
 
       - name: Upload SBOM artifact
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom-scan-results
           path: ${{ steps.scan_sbom.outputs.sarif }}
