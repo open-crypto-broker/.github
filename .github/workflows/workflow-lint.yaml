@@ -73,10 +73,14 @@ jobs:
         if: ${{ steps.changed.outputs.files != '' }}
         env:
           STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
-        run: actionlint "${STEPS_CHANGED_OUTPUTS_FILES}"
+        run: |
+          # shellcheck disable=SC2086
+          actionlint ${STEPS_CHANGED_OUTPUTS_FILES}
 
       - name: Run zizmor
         if: ${{ steps.changed.outputs.files != '' }}
         env:
           STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
-        run: zizmor --min-severity medium --persona=auditor "${STEPS_CHANGED_OUTPUTS_FILES}"
+        run: |
+          # shellcheck disable=SC2086
+          zizmor --min-severity medium --persona=auditor ${STEPS_CHANGED_OUTPUTS_FILES}
