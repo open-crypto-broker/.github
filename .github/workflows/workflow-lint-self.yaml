@@ -1,0 +1,15 @@
+name: Workflow Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  lint:
+    name: Lint Workflow
+    uses: ./.github/workflows/workflow-lint.yaml
+    with:
+      paths: '.github/workflows/ actions/'
