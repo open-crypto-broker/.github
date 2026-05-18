@@ -1,0 +1,105 @@
+name: Dependency Version Check
+
+on:
+  schedule:
+    - cron: '23 6 * * 1' # Every Monday ~6:23 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dependency-version-check-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  check-versions:
+    name: Check for dependency updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for checkout
+      issues: write # needed to create/update issue with update info
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check for updates
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPDATES=""
+          HAS_UPDATES="false"
+
+          check_tool() {
+            local name="$1" pinned="$2" latest="$3" link="$4"
+            if [ -z "$latest" ]; then
+              echo "::warning::Failed to fetch latest version for $name"
+              return
+            fi
+            if [ "$pinned" != "$latest" ]; then
+              UPDATES+="| $name | $pinned | $latest | $link |\n"
+              HAS_UPDATES="true"
+            else
+              echo "$name is up to date ($pinned)"
+            fi
+          }
+
+          # =============================================
+          # CLI Tools (versions extracted from repo files)
+          # =============================================
+
+          # --- markdownlint-cli2 (npm) ---
+          PINNED=$(grep -oP 'markdownlint-cli2@\K[0-9.]+' actions/markdownlint/action.yaml)
+          LATEST=$(npm view markdownlint-cli2 version 2>/dev/null)
+          check_tool "markdownlint-cli2" "$PINNED" "$LATEST" "[npm](https://www.npmjs.com/package/markdownlint-cli2)"
+
+          # --- git-cliff (GitHub releases) ---
+          PINNED=$(grep -oP 'VERSION="\K[0-9.]+' actions/git-cliff/action.yaml)
+          LATEST=$(gh release view --repo orhun/git-cliff --json tagName -q .tagName | sed 's/^v//')
+          check_tool "git-cliff" "$PINNED" "$LATEST" "[GitHub](https://github.com/orhun/git-cliff/releases)"
+
+          # --- actionlint (GitHub releases) ---
+          PINNED=$(grep -oP 'download-actionlint\.bash\) \K[0-9.]+' .github/workflows/workflow-lint.yaml)
+          LATEST=$(gh release view --repo rhysd/actionlint --json tagName -q .tagName | sed 's/^v//')
+          check_tool "actionlint" "$PINNED" "$LATEST" "[GitHub](https://github.com/rhysd/actionlint/releases)"
+
+          # --- zizmor (PyPI) ---
+          PINNED=$(grep -oP 'zizmor==\K[0-9.]+' .github/workflows/workflow-lint.yaml)
+          LATEST=$(curl -s https://pypi.org/pypi/zizmor/json | jq -r .info.version)
+          check_tool "zizmor" "$PINNED" "$LATEST" "[PyPI](https://pypi.org/project/zizmor/)"
+
+          echo "has_updates=$HAS_UPDATES" >> "$GITHUB_OUTPUT"
+
+          if [ "$HAS_UPDATES" = "true" ]; then
+            {
+              echo "The following pinned dependencies have newer versions available:"
+              echo ""
+              echo "| Dependency | Pinned | Latest | Link |"
+              echo "|------------|--------|--------|------|"
+              echo -e "$UPDATES"
+              echo "Review the changelogs and update the pinned versions if appropriate."
+              echo ""
+              echo "_Automatically created by the [Dependency Version Check](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/dependency-version-check.yaml) workflow._"
+            } > /tmp/issue-body.md
+          fi
+
+      - name: Create or update issue
+        if: steps.check.outputs.has_updates == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="chore(deps): dependency updates available"
+
+          # Find existing open issue by title
+          EXISTING=$(gh issue list --search "\"$TITLE\" in:title" --state open --json number -q '.[0].number' 2>/dev/null || true)
+
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --body-file /tmp/issue-body.md
+            echo "Updated existing issue #$EXISTING"
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/issue-body.md
+            echo "Created new issue"
+          fi
