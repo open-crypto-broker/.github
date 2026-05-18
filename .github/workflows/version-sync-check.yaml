@@ -1,0 +1,71 @@
+name: Reusable Version Sync Check
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        required: true
+        description: 'go or js'
+      dockerfile:
+        type: string
+        required: false
+        default: 'docker/Dockerfile'
+        description: 'Path to Dockerfile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  version-sync:
+    name: Version Sync Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # required for checkout
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check Go version sync
+        if: inputs.language == 'go'
+        env:
+          DOCKERFILE: ${{ inputs.dockerfile }}
+        run: |
+          # Extract Go minor version from go.mod (e.g., "go 1.26.1" → "1.26")
+          GOMOD_VERSION=$(awk '/^go /{print $2}' go.mod | cut -d. -f1,2)
+          # Extract ARG GO_VERSION from Dockerfile (e.g., "ARG GO_VERSION=1.26" → "1.26")
+          DOCKER_GO=$(grep -oP '^ARG GO_VERSION=\K[0-9.]+' "$DOCKERFILE")
+
+          echo "go.mod version (minor): $GOMOD_VERSION"
+          echo "Dockerfile GO_VERSION:  $DOCKER_GO"
+
+          if [ "$GOMOD_VERSION" != "$DOCKER_GO" ]; then
+            echo "::error:: Go version mismatch — go.mod specifies $GOMOD_VERSION but Dockerfile pins $DOCKER_GO"
+            exit 1
+          fi
+          echo "Go versions are in sync"
+
+      - name: Check Node.js version sync
+        if: inputs.language == 'js'
+        env:
+          DOCKERFILE: ${{ inputs.dockerfile }}
+        run: |
+          # Extract Node major version from package.json engines.node (e.g., ">=24" → "24")
+          PKG_NODE=$(jq -r '.engines.node // ""' package.json | grep -oP '\d+' | head -1)
+          # Extract ARG NODE_VERSION from Dockerfile (e.g., "ARG NODE_VERSION=24" → "24")
+          DOCKER_NODE=$(grep -oP '^ARG NODE_VERSION=\K[0-9]+' "$DOCKERFILE")
+
+          echo "package.json engines.node (major): $PKG_NODE"
+          echo "Dockerfile NODE_VERSION:           $DOCKER_NODE"
+
+          if [ "$PKG_NODE" != "$DOCKER_NODE" ]; then
+            echo "::error:: Node.js version mismatch — package.json requires $PKG_NODE but Dockerfile pins $DOCKER_NODE"
+            exit 1
+          fi
+          echo "Node.js versions are in sync"
