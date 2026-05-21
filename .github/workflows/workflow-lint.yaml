@@ -74,8 +74,14 @@ jobs:
         env:
           STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
         run: |
-          # shellcheck disable=SC2086
-          actionlint ${STEPS_CHANGED_OUTPUTS_FILES}
+          # Filter out composite actions (actionlint only understands workflows)
+          WORKFLOW_FILES=$(echo "$STEPS_CHANGED_OUTPUTS_FILES" | tr ' ' '\n' | grep -v '^actions/' | tr '\n' ' ' | xargs)
+          if [ -n "$WORKFLOW_FILES" ]; then
+            # shellcheck disable=SC2086
+            actionlint ${WORKFLOW_FILES}
+          else
+            echo "No workflow files to lint with actionlint (only action files changed)."
+          fi
 
       - name: Run zizmor
         if: ${{ steps.changed.outputs.files != '' }}
