@@ -48,6 +48,14 @@ jobs:
           rm grant_${VERSION}_linux_amd64.tar.gz
           rm -rf grant_${VERSION}_linux_amd64/
 
+      ################################################
+      # Checkout PR branch and create SBOM
+      ################################################
+      - name: Checkout PR branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
       - name: Checkout shared policy for Grant
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -55,14 +63,6 @@ jobs:
           ref: main
           path: .shared-policy
           sparse-checkout: .grant.yaml
-          persist-credentials: false
-
-      ################################################
-      # Checkout PR branch and create SBOM
-      ################################################
-      - name: Checkout PR branch
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
           persist-credentials: false
 
       - name: Generate SBOM from PR
