@@ -71,6 +71,11 @@ jobs:
           LATEST=$(curl -s https://pypi.org/pypi/zizmor/json | jq -r .info.version)
           check_tool "zizmor" "$PINNED" "$LATEST" "[PyPI](https://pypi.org/project/zizmor/)"
 
+          # --- grant (GitHub releases) ---
+          PINNED=$(grep -oP 'VERSION="\K[0-9.]+' .github/workflows/license-compliance.yaml)
+          LATEST=$(gh release view --repo anchore/grant --json tagName -q .tagName | sed 's/^v//')
+          check_tool "grant" "$PINNED" "$LATEST" "[GitHub](https://github.com/anchore/grant/releases)"
+
           echo "has_updates=$HAS_UPDATES" >> "$GITHUB_OUTPUT"
 
           if [ "$HAS_UPDATES" = "true" ]; then

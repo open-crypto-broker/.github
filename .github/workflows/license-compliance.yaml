@@ -1,0 +1,146 @@
+name: Reusable License Compliance Check
+
+on:
+  workflow_call:
+    inputs:
+      directory_to_scan:
+        description: "Directory to scan for license compliance"
+        required: false
+        type: string
+        default: "."
+
+concurrency:
+  group: ${{ github.workflow }}-license-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  license-check:
+    name: License Compliance Check
+    permissions:
+      contents: read # required for checkout
+    runs-on: ubuntu-latest
+
+    steps:
+      ################################################
+      # Sanity checks
+      ################################################
+      - name: Validate directory path input
+        env:
+          DIR_TO_SCAN: ${{ inputs.directory_to_scan }}
+        run: |
+          if [ -z "$DIR_TO_SCAN" ]; then
+            echo "directory_to_scan is required"
+            exit 1
+          fi
+
+      ################################################
+      # Grant setup
+      ################################################
+      - name: Install Grant
+        shell: bash
+        run: |
+          VERSION="0.6.4"
+          wget "https://github.com/anchore/grant/releases/download/v${VERSION}/grant_${VERSION}_linux_amd64.tar.gz"
+          tar -xzf grant_*.tar.gz --one-top-level
+          mv grant_${VERSION}_linux_amd64/grant /usr/local/bin
+          rm grant_${VERSION}_linux_amd64.tar.gz
+          rm -rf grant_${VERSION}_linux_amd64/
+
+      - name: Checkout shared policy for Grant
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: open-crypto-broker/.github
+          ref: main
+          path: .shared-policy
+          sparse-checkout: .grant.yaml
+          persist-credentials: false
+
+      ################################################
+      # Checkout PR branch and create SBOM
+      ################################################
+      - name: Checkout PR branch
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Generate SBOM from PR
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: ${{ inputs.directory_to_scan }}
+          format: spdx-json
+          output-file: "sbom.spdx.json"
+
+      - name: Extract license inventory from PR SBOM
+        run: |
+          jq -r '
+            [.packages[] | {name: .name, version: .versionInfo, license: (.licenseConcluded // .licenseDeclared // "UNKNOWN")}]
+            | sort_by(.license, .name)
+            | .[]
+            | "\(.license)\t\(.name)@\(.version)"
+          ' sbom.spdx.json > license-inventory.txt
+          {
+            echo "### License Inventory (PR branch)"
+            echo '```'
+            cat license-inventory.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      ################################################
+      # Checkout base branch (main) and create SBOM
+      ################################################
+      - name: Checkout base branch (main)
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .base-branch
+          persist-credentials: false
+
+      - name: Generate SBOM from base branch
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .base-branch/${{ inputs.directory_to_scan }}
+          format: spdx-json
+          output-file: "sbom-base.spdx.json"
+
+      ################################################
+      # Compute license diff (base → PR)
+      ################################################
+      - name: Compute license diff (base → PR)
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        run: |
+          jq -r '
+            [.packages[] | {name: .name, version: .versionInfo, license: (.licenseConcluded // .licenseDeclared // "UNKNOWN")}]
+            | sort_by(.license, .name)
+            | .[]
+            | "\(.license)\t\(.name)@\(.version)"
+          ' sbom-base.spdx.json > license-inventory-base.txt
+
+          {
+            echo "### License Diff (base → PR)"
+            if diff license-inventory-base.txt license-inventory.txt > license-diff.txt; then
+              echo "No license changes detected."
+            else
+              echo '```diff'
+              diff --unified=0 license-inventory-base.txt license-inventory.txt || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      ################################################
+      # Check overall license compliance
+      ################################################
+      - name: Check license compliance
+        run: |
+          grant check sbom.spdx.json -c .shared-policy/.grant.yaml --disable-file-search
+
+      - name: Upload SBOM artifact (on failure)
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: license-compliance-sbom
+          path: sbom.spdx.json
+          retention-days: 5

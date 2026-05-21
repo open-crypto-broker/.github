@@ -1,0 +1,38 @@
+# License compliance policy for Open Crypto Broker
+# Used by Anchore Grant to check dependency licenses against Apache-2.0 compatibility
+# Docs: https://oss.anchore.com/docs/guides/license/policies/
+
+allow:
+  # Permissive licenses (Apache-2.0 compatible)
+  - Apache-2.0
+  - MIT
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+  - 0BSD
+  - Unlicense
+  - CC0-1.0
+  - Zlib
+  - PostgreSQL
+  - BlueOak-1.0.0
+
+  # Weak copyleft (Apache-2.0 compatible at file-level)
+  - MPL-2.0
+
+ignore-packages:
+  # Own packages (may not have license metadata in SBOM)
+  - "github.com/open-crypto-broker/*"
+  - "@open-crypto-broker/*"
+  - "open-crypto-broker/*"
+
+  # Go standard library
+  - "stdlib"
+
+  # GitHub Actions (detected by Syft from workflow files, not actual dependencies)
+  - "actions/*"
+  - "go-task/*"
+
+# Syft directory scans produce NOASSERTION for Go module licenses (no source download).
+# The allow-list above is the primary enforcement — any detected license must be compliant.
+require-license: false
+require-known-license: true
