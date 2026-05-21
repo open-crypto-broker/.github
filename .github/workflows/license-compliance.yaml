@@ -36,33 +36,11 @@ jobs:
           fi
 
       ################################################
-      # Grant setup
-      ################################################
-      - name: Install Grant
-        shell: bash
-        run: |
-          VERSION="0.6.4"
-          wget "https://github.com/anchore/grant/releases/download/v${VERSION}/grant_${VERSION}_linux_amd64.tar.gz"
-          tar -xzf grant_*.tar.gz --one-top-level
-          mv grant_${VERSION}_linux_amd64/grant /usr/local/bin
-          rm grant_${VERSION}_linux_amd64.tar.gz
-          rm -rf grant_${VERSION}_linux_amd64/
-
-      ################################################
       # Checkout PR branch and create SBOM
       ################################################
       - name: Checkout PR branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          persist-credentials: false
-
-      - name: Checkout shared policy for Grant
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          repository: open-crypto-broker/.github
-          ref: main
-          path: .shared-policy
-          sparse-checkout: .grant.yaml
           persist-credentials: false
 
       - name: Generate SBOM from PR
@@ -133,9 +111,19 @@ jobs:
       ################################################
       # Check overall license compliance
       ################################################
+      - name: Checkout grant-check action
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: open-crypto-broker/.github
+          ref: main
+          path: .grant-check-action
+          sparse-checkout: actions/grant-check
+          persist-credentials: false
+
       - name: Check license compliance
-        run: |
-          grant check sbom.spdx.json -c .shared-policy/.grant.yaml --disable-file-search
+        uses: ./.grant-check-action/actions/grant-check
+        with:
+          sbom-file: sbom.spdx.json
 
       - name: Upload SBOM artifact (on failure)
         if: failure()

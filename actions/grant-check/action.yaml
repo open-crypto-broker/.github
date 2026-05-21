@@ -1,0 +1,28 @@
+name: "Grant License Check"
+description: "Run Anchore Grant license compliance check with shared policy"
+
+inputs:
+  sbom-file:
+    description: "Path to the SBOM file to check"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Grant
+      shell: bash
+      run: |
+        VERSION="0.6.4"
+        wget "https://github.com/anchore/grant/releases/download/v${VERSION}/grant_${VERSION}_linux_amd64.tar.gz"
+        tar -xzf grant_*.tar.gz --one-top-level
+        mv grant_${VERSION}_linux_amd64/grant /usr/local/bin
+        rm grant_${VERSION}_linux_amd64.tar.gz
+        rm -rf grant_${VERSION}_linux_amd64/
+
+    - name: Check license compliance
+      shell: bash
+      env:
+        GRANT_CONFIG: ${{ github.action_path }}/grant.yaml
+        SBOM_FILE: ${{ inputs.sbom-file }}
+      run: |
+        grant check "$SBOM_FILE" -c "$GRANT_CONFIG" --disable-file-search
