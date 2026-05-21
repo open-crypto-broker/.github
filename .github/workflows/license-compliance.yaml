@@ -80,10 +80,12 @@ jobs:
             | .[]
             | "\(.license)\t\(.name)@\(.version)"
           ' sbom.spdx.json > license-inventory.txt
-          echo "### License Inventory (PR branch)" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat license-inventory.txt >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### License Inventory (PR branch)"
+            echo '```'
+            cat license-inventory.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       ################################################
       # Checkout base branch (main) and create SBOM
@@ -117,14 +119,16 @@ jobs:
             | "\(.license)\t\(.name)@\(.version)"
           ' sbom-base.spdx.json > license-inventory-base.txt
 
-          echo "### License Diff (base → PR)" >> "$GITHUB_STEP_SUMMARY"
-          if diff license-inventory-base.txt license-inventory.txt > license-diff.txt; then
-            echo "No license changes detected." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo '```diff' >> "$GITHUB_STEP_SUMMARY"
-            diff --unified=0 license-inventory-base.txt license-inventory.txt >> "$GITHUB_STEP_SUMMARY" || true
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "### License Diff (base → PR)"
+            if diff license-inventory-base.txt license-inventory.txt > license-diff.txt; then
+              echo "No license changes detected."
+            else
+              echo '```diff'
+              diff --unified=0 license-inventory-base.txt license-inventory.txt || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       ################################################
       # Check overall license compliance
