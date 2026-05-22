@@ -95,7 +95,8 @@ jobs:
             | sort_by(.license, .name)
             | .[]
             | "\(.license)\t\(.name)@\(.version)"
-          ' sbom-base.spdx.json > license-inventory-base.txt
+          ' sbom-base.spdx.json | sed 's|\.base-branch/||g' > license-inventory-base.txt
+          # Remove the base-branch prefix from SBOM file paths otherwise diff will show changed files instead of just changed licenses
 
           {
             echo "### License Diff (base → PR)"
@@ -103,7 +104,7 @@ jobs:
               echo "No license changes detected."
             else
               echo '```diff'
-              diff --unified=0 license-inventory-base.txt license-inventory.txt || true
+              diff --unified=0 --label base --label pr license-inventory-base.txt license-inventory.txt || true
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
