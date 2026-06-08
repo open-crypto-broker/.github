@@ -5,6 +5,9 @@ inputs:
   version:
     description: 'Version (pre(patch/minor/major), prerelease, release)'
     required: true
+  token:
+    description: "GitHub token for pushing commits and tags"
+    required: true
 
 runs:
   using: 'composite'
@@ -19,17 +22,16 @@ runs:
       shell: bash
       env:
         NPM_VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         # Add as GitHub actions bot
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        # Configure git to use the token for authentication
+        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
         npm version "$NPM_VERSION" --preid=rc --no-git-tag-version
         NEW_VERSION=$(npm pkg get version | tr -d '"')
         git add package.json package-lock.json
         git commit -m "chore: bump version to v${NEW_VERSION}"
-
-    - name: Push version bump
-      shell: bash
-      run: |
         git push
 
