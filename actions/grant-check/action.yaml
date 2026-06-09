@@ -12,7 +12,7 @@ runs:
     - name: Install Grant
       shell: bash
       run: |
-        VERSION="0.6.4"
+        VERSION="0.6.7"
         wget "https://github.com/anchore/grant/releases/download/v${VERSION}/grant_${VERSION}_linux_amd64.tar.gz"
         tar -xzf grant_*.tar.gz --one-top-level
         mv grant_${VERSION}_linux_amd64/grant /usr/local/bin

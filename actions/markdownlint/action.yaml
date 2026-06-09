@@ -30,7 +30,7 @@ runs:
     - name: Install markdownlint-cli2
       if: ${{ steps.changed.outputs.files != '' }}
       shell: bash
-      run: npm install -g markdownlint-cli2@0.22.0
+      run: npm install -g markdownlint-cli2@0.22.1
 
     - name: Run markdownlint
       if: ${{ steps.changed.outputs.files != '' }}
