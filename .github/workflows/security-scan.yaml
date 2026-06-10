@@ -133,14 +133,17 @@ jobs:
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           path: ${{ inputs.directory_to_scan }}
-          format: spdx-json
-          output-file: "sbom.spdx.json"
+          # syft-json preserves per-file source locations, which spdx-json drops.
+          # This ensures Grype's SARIF includes valid artifactLocation.uri values
+          # that GitHub code scanning requires.
+          format: syft-json
+          output-file: "sbom.syft.json"
 
-      - name: Scan SBOM
+      - name: Scan SBOM with Grype
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         id: scan_sbom
         with:
-          sbom: "sbom.spdx.json"
+          sbom: "sbom.syft.json"
           fail-build: true
           severity-cutoff: medium # Only fail the image scan for medium and above vulnerabilities
           output-format: sarif # Generate SARIF for GitHub Security
