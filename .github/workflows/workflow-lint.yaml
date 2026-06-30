@@ -88,5 +88,15 @@ jobs:
         env:
           STEPS_CHANGED_OUTPUTS_FILES: ${{ steps.changed.outputs.files }}
         run: |
-          # shellcheck disable=SC2086
-          zizmor --min-severity medium --persona=auditor ${STEPS_CHANGED_OUTPUTS_FILES}
+          # zizmor only understands workflow files, action definitions
+          # (action.yml / action.yaml), and Dependabot configs
+          # (.github/dependabot.yml). Filter out everything else (e.g. grant.yaml).
+          ZIZMOR_FILES=$(echo "$STEPS_CHANGED_OUTPUTS_FILES" | tr ' ' '\n' \
+            | grep -E '(^\.github/workflows/.*\.ya?ml$|(^|/)action\.ya?ml$|(^|/)\.github/dependabot\.ya?ml$)' \
+            | tr '\n' ' ' | xargs)
+          if [ -n "$ZIZMOR_FILES" ]; then
+            # shellcheck disable=SC2086
+            zizmor --min-severity medium --persona=auditor ${ZIZMOR_FILES}
+          else
+            echo "No workflow, action, or Dependabot files to lint with zizmor."
+          fi
