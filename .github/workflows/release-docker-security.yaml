@@ -27,6 +27,14 @@ on:
         type: string
         required: true
         description: 'SBOM output filename'
+      dockerfile:
+        type: string
+        required: false
+        default: 'docker/Dockerfile'
+      context:
+        type: string
+        required: false
+        default: '.'
 
 permissions: {}
 
@@ -70,6 +78,8 @@ jobs:
           image_name: ${{ inputs.image_name }}
           image_tag: ${{ inputs.tag }}
           image_sha: ${{ inputs.commit }}
+          dockerfile: ${{ inputs.dockerfile }}
+          context: ${{ inputs.context }}
 
       - name: Print digest
         run: echo "Digest=${DIGEST}"
