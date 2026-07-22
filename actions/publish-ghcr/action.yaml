@@ -44,7 +44,7 @@ runs:
           type=ref,event=tag
           type=sha
         labels: |
-          org.opencontainers.image.source=${{ github.repositoryUrl }}
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
           org.opencontainers.image.revision=${{ inputs.image_sha }}
           org.opencontainers.image.version=${{ inputs.image_tag }}
           org.opencontainers.image.rc=${{ inputs.is_rc }}
