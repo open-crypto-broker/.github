@@ -67,7 +67,7 @@ jobs:
 
       - name: Install zizmor
         if: ${{ steps.changed.outputs.files != '' }}
-        run: pipx install zizmor==1.26.1
+        run: pipx install zizmor==1.27.0
 
       - name: Run actionlint
         if: ${{ steps.changed.outputs.files != '' }}
