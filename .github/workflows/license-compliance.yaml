@@ -53,7 +53,7 @@ jobs:
       - name: Extract license inventory from PR SBOM
         run: |
           jq -r '
-            [.packages[] | {name: .name, version: .versionInfo, license: (.licenseConcluded // .licenseDeclared // "UNKNOWN")}]
+            [.packages[] | {name: .name, version: .versionInfo, license: ([.licenseDeclared, .licenseConcluded] | map(select(. != null and . != "NOASSERTION")) | first // "UNKNOWN")}]
             | sort_by(.license, .name)
             | .[]
             | "\(.license)\t\(.name)@\(.version)"
@@ -91,7 +91,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
         run: |
           jq -r '
-            [.packages[] | {name: .name, version: .versionInfo, license: (.licenseConcluded // .licenseDeclared // "UNKNOWN")}]
+            [.packages[] | {name: .name, version: .versionInfo, license: ([.licenseDeclared, .licenseConcluded] | map(select(. != null and . != "NOASSERTION")) | first // "UNKNOWN")}]
             | sort_by(.license, .name)
             | .[]
             | "\(.license)\t\(.name)@\(.version)"
