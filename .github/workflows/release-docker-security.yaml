@@ -50,6 +50,7 @@ jobs:
       packages: write # for pushing image to GHCR
       id-token: write # for publish-ghcr action needed
       attestations: write # for publish-ghcr action needed
+      artifact-metadata: write # for build provenance storage record
     runs-on: ubuntu-latest
 
     outputs:
@@ -126,6 +127,7 @@ jobs:
           image: ${{ steps.image.outputs.ref }}
           format: spdx-json
           output-file: ${{ inputs.sbom_file }}
+          upload-release-assets: false
 
       - name: Scan image
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0

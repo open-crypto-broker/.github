@@ -22,9 +22,6 @@ outputs:
   image_repo:
     description: 'Full GHCR image repository path'
     value: ${{ steps.compute.outputs.image_repo }}
-  component_repo:
-    description: 'OCM component repository path'
-    value: ${{ steps.compute.outputs.component_repo }}
   sbom_file:
     description: 'SBOM output filename'
     value: ${{ steps.compute.outputs.sbom_file }}
@@ -45,11 +42,9 @@ runs:
         if [[ "${TAG}" == *"-rc"* ]]; then
           IS_RC=true
           IMAGE_REPO="ghcr.io/open-crypto-broker/${IMAGE_BASE_NAME}-rc"
-          COMPONENT_REPO="ghcr.io/open-crypto-broker/ocm-components-rc"
         else
           IS_RC=false
           IMAGE_REPO="ghcr.io/open-crypto-broker/${IMAGE_BASE_NAME}"
-          COMPONENT_REPO="ghcr.io/open-crypto-broker/ocm-components"
         fi
 
         IMAGE_NAME=$(basename "${IMAGE_REPO}")
@@ -60,7 +55,6 @@ runs:
           echo "is_rc=${IS_RC}"
           echo "image_repo=${IMAGE_REPO}"
           echo "image_name=${IMAGE_NAME}"
-          echo "component_repo=${COMPONENT_REPO}"
           echo "sbom_file=${IMAGE_NAME}-${TAG}-sbom.spdx.json"
         } >> "$GITHUB_OUTPUT"
 
@@ -71,12 +65,10 @@ runs:
         IS_RC: ${{ steps.compute.outputs.is_rc }}
         IMAGE_NAME: ${{ steps.compute.outputs.image_name }}
         IMAGE_REPO: ${{ steps.compute.outputs.image_repo }}
-        COMPONENT_REPO: ${{ steps.compute.outputs.component_repo }}
         SBOM_FILE: ${{ steps.compute.outputs.sbom_file }}
       run: |
         echo "Release tag: ${TAG}"
         echo "RC mode: ${IS_RC}"
         echo "Image name: ${IMAGE_NAME}"
         echo "Docker repo: ${IMAGE_REPO}"
-        echo "OCM repo: ${COMPONENT_REPO}"
         echo "SBOM file: ${SBOM_FILE}"
