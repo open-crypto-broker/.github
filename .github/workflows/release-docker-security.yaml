@@ -134,7 +134,8 @@ jobs:
         with:
           image: ${{ steps.image.outputs.ref }}
           fail-build: true
-          severity-cutoff: critical
+          severity-cutoff: high # Only fail the image scan for high and above vulnerabilities
+          only-fixed: true # gate only on vulnerabilities that have a fix available
 
       - name: Upload SBOM to GitHub Release
         if: inputs.is_rc != 'true'

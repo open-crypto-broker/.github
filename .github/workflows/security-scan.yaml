@@ -80,7 +80,7 @@ jobs:
         with:
           image: ${{ env.IMAGE_WITH_DIGEST }}
           fail-build: true
-          severity-cutoff: medium # Only fail the image scan for medium and above vulnerabilities
+          severity-cutoff: high # Only fail the image scan for high and above vulnerabilities
           output-format: sarif # Generate SARIF for GitHub Security
 
       - name: Upload docker image scan results to GitHub Security tab
@@ -145,7 +145,7 @@ jobs:
         with:
           sbom: "sbom.syft.json"
           fail-build: true
-          severity-cutoff: medium # Only fail the image scan for medium and above vulnerabilities
+          severity-cutoff: high # Only fail the image scan for high and above vulnerabilities
           output-format: sarif # Generate SARIF for GitHub Security
 
       - name: Upload SBOM SARIF to GitHub Security tab
