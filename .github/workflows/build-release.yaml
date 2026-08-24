@@ -36,6 +36,8 @@ jobs:
     name: Build binaries
     permissions:
       contents: read # required for checkout
+      id-token: write # for OIDC-based attestation signing
+      attestations: write # for creating build/SBOM attestations
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ matrix.os }}
     strategy:
@@ -101,12 +103,35 @@ jobs:
           cd build
           zip -r "../$ARCHIVE" "$BUILD_NAME"
 
+      # -- Supply-chain: SBOM + signed provenance/SBOM attestations --
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          file: build/${{ inputs.build-name }}
+          format: spdx-json
+          output-file: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
+
+      - name: Attest SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
+          sbom-path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.spdx.json
+
       # -- Upload artifact for later steps --
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.build-name }}-${{ matrix.suffix }}
-          path: ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
+          path: |
+            ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.zip
+            ${{ inputs.build-name }}-${{ inputs.tag }}-${{ matrix.suffix }}.spdx.json
 
   gh-release:
     name: Upload artifacts to release
@@ -135,7 +160,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release view "$TAG" || gh release create "$TAG" --verify-tag
-          gh release upload "$TAG" dist/**/*.zip --clobber
+          gh release upload "$TAG" dist/**/*.zip dist/**/*.spdx.json --clobber
 
   ghcr-release:
     name: Upload binaries to GHCR
