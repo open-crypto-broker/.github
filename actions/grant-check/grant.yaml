@@ -16,6 +16,7 @@ allow:
   - PostgreSQL
   - BlueOak-1.0.0
   - Python-2.0
+  - PSF-2.0 # Python Software Foundation License 2.0
 
   # Weak copyleft (Apache-2.0 compatible at file-level)
   - MPL-2.0
